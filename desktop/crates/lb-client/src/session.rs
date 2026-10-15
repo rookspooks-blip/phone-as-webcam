@@ -492,7 +492,7 @@ fn reader_loop(
                 }
                 shared.stats.lock().unwrap().totals.audio_chunks += 1;
                 if let Some(sink) = &audio_sink {
-                    let samples = data.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
+                    let samples = data.as_chunks::<2>().0.iter().map(|b| i16::from_le_bytes(*b)).collect();
                     sink(AudioChunk {
                         pts_us: hdr.pts_us,
                         rate: audio_cfg.0,

@@ -192,15 +192,15 @@ void NoSignalCard::Render(BYTE* dst, int dw, int dh, OutFormat fmt) {
     DeleteObject(bg);
     SetBkMode(dc, TRANSPARENT);
 
-    HFONT big = CreateFontW(-(dh / 12), 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+    HFONT font_big = CreateFontW(-(dh / 12), 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                             CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-    HFONT small = CreateFontW(-(dh / 24), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+    HFONT font_small = CreateFontW(-(dh / 24), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                               CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-    HGDIOBJ old_font = SelectObject(dc, big);
+    HGDIOBJ old_font = SelectObject(dc, font_big);
     SetTextColor(dc, RGB(235, 235, 240));
     RECT r1 = {0, dh / 2 - dh / 8, dw, dh / 2};
     DrawTextW(dc, L"Lensbridge Camera", -1, &r1, DT_CENTER | DT_SINGLELINE | DT_BOTTOM);
-    SelectObject(dc, small);
+    SelectObject(dc, font_small);
     SetTextColor(dc, RGB(160, 165, 180));
     RECT r2 = {dw / 16, dh / 2 + dh / 40, dw - dw / 16, dh};
     DrawTextW(dc, L"Нет сигнала: запустите Lensbridge на ПК и на телефоне", -1, &r2, DT_CENTER | DT_WORDBREAK | DT_TOP);
@@ -238,8 +238,8 @@ void NoSignalCard::Render(BYTE* dst, int dw, int dh, OutFormat fmt) {
 
     SelectObject(dc, old_font);
     SelectObject(dc, old_bmp);
-    DeleteObject(big);
-    DeleteObject(small);
+    DeleteObject(font_big);
+    DeleteObject(font_small);
     DeleteObject(bmp);
     DeleteDC(dc);
 
