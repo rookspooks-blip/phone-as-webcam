@@ -10,8 +10,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use lb_proto::{
-    server_handshake, FrameReader, FrameWriter, MediaHeader, PacketType, PairingKey, CODEC_H264, CODEC_PCM_S16LE,
-    FLAG_CONFIG, FLAG_DISCONT, FLAG_KEY, PROTO_VERSION,
+    server_handshake, FrameReader, FrameWriter, MediaHeader, PacketType, PairingKey, CODEC_H264, CODEC_PCM_S16LE, FLAG_CONFIG,
+    FLAG_DISCONT, FLAG_KEY, PROTO_VERSION,
 };
 use openh264::encoder::{BitRate, Encoder, EncoderConfig, FrameRate, FrameType, IntraFramePeriod, RateControlMode, UsageType};
 use openh264::formats::YUVBuffer;
@@ -31,7 +31,9 @@ pub struct SimOptions {
 
 impl Default for SimOptions {
     fn default() -> Self {
-        Self { device_name: "Lensbridge Simulator".into() }
+        Self {
+            device_name: "Lensbridge Simulator".into(),
+        }
     }
 }
 
@@ -132,7 +134,13 @@ fn test_pattern(st: &State, n: u64) -> YUVBuffer {
     YUVBuffer::from_vec(buf, w, h)
 }
 
-fn handle(mut stream: TcpStream, key: PairingKey, opts: SimOptions, active: Arc<AtomicBool>, stop: Arc<AtomicBool>) -> lb_proto::Result<()> {
+fn handle(
+    mut stream: TcpStream,
+    key: PairingKey,
+    opts: SimOptions,
+    active: Arc<AtomicBool>,
+    stop: Arc<AtomicBool>,
+) -> lb_proto::Result<()> {
     stream.set_nodelay(true)?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
     let busy = active.swap(true, Ordering::SeqCst);
@@ -165,7 +173,9 @@ fn handle(mut stream: TcpStream, key: PairingKey, opts: SimOptions, active: Arc<
     }
 
     // The first message must be hello (proves the client owns the key).
-    let hello = rx.recv_timeout(Duration::from_secs(5)).map_err(|_| lb_proto::Error::Malformed("no hello"))?;
+    let hello = rx
+        .recv_timeout(Duration::from_secs(5))
+        .map_err(|_| lb_proto::Error::Malformed("no hello"))?;
     if hello["t"] != "hello" {
         return Err(lb_proto::Error::Malformed("first message is not hello"));
     }
@@ -183,8 +193,10 @@ fn handle(mut stream: TcpStream, key: PairingKey, opts: SimOptions, active: Arc<
         screen: "on".into(),
         ev: 0.0,
     };
-    writer.write_json(&json!({"t": "welcome", "proto": PROTO_VERSION, "server": "lensbridge-sim", "version": env!("CARGO_PKG_VERSION"),
-        "device": opts.device_name, "server_time_us": server_now_us(), "state": st.to_json()}))?;
+    writer.write_json(
+        &json!({"t": "welcome", "proto": PROTO_VERSION, "server": "lensbridge-sim", "version": env!("CARGO_PKG_VERSION"),
+        "device": opts.device_name, "server_time_us": server_now_us(), "state": st.to_json()}),
+    )?;
     send_stream_config(&mut writer, &st)?;
 
     let mut encoder = make_encoder(&st);
@@ -235,7 +247,9 @@ fn handle(mut stream: TcpStream, key: PairingKey, opts: SimOptions, active: Arc<
             }
             let yuv = test_pattern(&st, n);
             n += 1;
-            let bs = encoder.encode(&yuv).map_err(|e| lb_proto::Error::Io(std::io::Error::other(e.to_string())))?;
+            let bs = encoder
+                .encode(&yuv)
+                .map_err(|e| lb_proto::Error::Io(std::io::Error::other(e.to_string())))?;
             let ft = bs.frame_type();
             if !matches!(ft, FrameType::Skip | FrameType::Invalid) {
                 let data = bs.to_vec();
@@ -249,7 +263,12 @@ fn handle(mut stream: TcpStream, key: PairingKey, opts: SimOptions, active: Arc<
                     flags |= FLAG_DISCONT;
                     discont = false;
                 }
-                let hdr = MediaHeader { codec: CODEC_H264, flags, seq: vseq, pts_us: pts };
+                let hdr = MediaHeader {
+                    codec: CODEC_H264,
+                    flags,
+                    seq: vseq,
+                    pts_us: pts,
+                };
                 vseq = vseq.wrapping_add(1);
                 writer.write_packet(PacketType::Video, &hdr.encode_with(&data))?;
                 sent_frames += 1;
@@ -266,7 +285,12 @@ fn handle(mut stream: TcpStream, key: PairingKey, opts: SimOptions, active: Arc<
                 phase += 2.0 * std::f64::consts::PI * 440.0 / 48_000.0;
                 pcm.extend_from_slice(&s.to_le_bytes());
             }
-            let hdr = MediaHeader { codec: CODEC_PCM_S16LE, flags: 0, seq: aseq, pts_us: server_now_us() };
+            let hdr = MediaHeader {
+                codec: CODEC_PCM_S16LE,
+                flags: 0,
+                seq: aseq,
+                pts_us: server_now_us(),
+            };
             aseq = aseq.wrapping_add(1);
             writer.write_packet(PacketType::Audio, &hdr.encode_with(&pcm))?;
         }

@@ -33,7 +33,11 @@ impl ClockSync {
         let rtt_us = c2 - c0;
         let mid = (c0 as i128 + c2 as i128) / 2;
         let offset_us = (s1 as i128 - mid) as i64;
-        self.samples.push_back(Sample { at_us: c2, rtt_us, offset_us });
+        self.samples.push_back(Sample {
+            at_us: c2,
+            rtt_us,
+            offset_us,
+        });
         while let Some(front) = self.samples.front() {
             if c2.saturating_sub(front.at_us) > WINDOW_US {
                 self.samples.pop_front();

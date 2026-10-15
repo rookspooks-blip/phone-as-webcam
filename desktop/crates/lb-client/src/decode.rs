@@ -70,7 +70,9 @@ pub struct H264Decoder {
 
 impl H264Decoder {
     pub fn new() -> Result<Self, String> {
-        Ok(Self { inner: Decoder::new().map_err(|e| e.to_string())? })
+        Ok(Self {
+            inner: Decoder::new().map_err(|e| e.to_string())?,
+        })
     }
 
     /// Decodes one Annex B access unit; returns `(width, height, i420)` when a

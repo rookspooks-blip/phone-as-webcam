@@ -93,7 +93,14 @@ mod tests {
         for (i, p) in i420.iter_mut().enumerate().take(w * h) {
             *p = (i % w) as u8;
         }
-        VideoFrame { width: w, height: h, i420, pts_us: 0, seq: 0, recv_us: 0 }
+        VideoFrame {
+            width: w,
+            height: h,
+            i420,
+            pts_us: 0,
+            seq: 0,
+            recv_us: 0,
+        }
     }
 
     #[test]

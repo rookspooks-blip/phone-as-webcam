@@ -49,15 +49,25 @@ fn streams_video_audio_and_applies_settings() {
     let audio = Arc::new(Mutex::new(0usize));
     let audio2 = audio.clone();
     let client = spawn(ClientConfig {
-        target: Target::Tcp { host: "127.0.0.1".into(), port: sim.port },
+        target: Target::Tcp {
+            host: "127.0.0.1".into(),
+            port: sim.port,
+        },
         key,
         client_name: "test".into(),
         audio_sink: Some(Arc::new(move |c| *audio2.lock().unwrap() += c.samples.len())),
         frames: None,
     });
 
-    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(e, Event::State(ConnState::Connected { .. }))));
-    assert!(wait_for(&client.events, Duration::from_secs(5), |e| matches!(e, Event::Control(v) if v["t"] == "caps")));
+    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(
+        e,
+        Event::State(ConnState::Connected { .. })
+    )));
+    assert!(wait_for(
+        &client.events,
+        Duration::from_secs(5),
+        |e| matches!(e, Event::Control(v) if v["t"] == "caps")
+    ));
 
     // Frames arrive and decode at the default 640x360.
     let (gen, f) = client.frames.wait_newer(0, Duration::from_secs(5)).expect("first frame");
@@ -66,7 +76,11 @@ fn streams_video_audio_and_applies_settings() {
 
     // Switch resolution: ack reports it and frames follow.
     client.set(json!({"w": 1280, "h": 720, "fps": 30}));
-    assert!(wait_for(&client.events, Duration::from_secs(5), |e| matches!(e, Event::Control(v) if v["t"] == "ack" && v["applied"]["w"] == 1280)));
+    assert!(wait_for(
+        &client.events,
+        Duration::from_secs(5),
+        |e| matches!(e, Event::Control(v) if v["t"] == "ack" && v["applied"]["w"] == 1280)
+    ));
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut seen = gen;
     let mut switched = false;
@@ -82,7 +96,11 @@ fn streams_video_audio_and_applies_settings() {
     assert!(switched, "resolution switch not observed");
 
     // Stats with clock-synced latency (sim clock is offset by 10 000 s).
-    assert!(wait_for(&client.events, Duration::from_secs(5), |e| matches!(e, Event::Stats(s) if s.fps > 5.0 && s.latency_ms.is_some_and(|l| (0.0..1000.0).contains(&l)))));
+    assert!(wait_for(
+        &client.events,
+        Duration::from_secs(5),
+        |e| matches!(e, Event::Stats(s) if s.fps > 5.0 && s.latency_ms.is_some_and(|l| (0.0..1000.0).contains(&l)))
+    ));
     assert!(*audio.lock().unwrap() >= 48_000 / 2, "expected at least 0.5 s of audio");
     client.stop();
 }
@@ -91,13 +109,19 @@ fn streams_video_audio_and_applies_settings() {
 fn wrong_key_reports_not_paired() {
     let sim = start_sim(&PairingKey::generate());
     let client = spawn(ClientConfig {
-        target: Target::Tcp { host: "127.0.0.1".into(), port: sim.port },
+        target: Target::Tcp {
+            host: "127.0.0.1".into(),
+            port: sim.port,
+        },
         key: PairingKey::generate(),
         client_name: "test".into(),
         audio_sink: None,
         frames: None,
     });
-    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(e, Event::State(ConnState::NotPaired))));
+    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(
+        e,
+        Event::State(ConnState::NotPaired)
+    )));
 }
 
 #[test]
@@ -106,21 +130,33 @@ fn reconnects_after_server_restart() {
     let sim = start_sim(&key);
     let port = sim.port;
     let client = spawn(ClientConfig {
-        target: Target::Tcp { host: "127.0.0.1".into(), port },
+        target: Target::Tcp {
+            host: "127.0.0.1".into(),
+            port,
+        },
         key: key.clone(),
         client_name: "test".into(),
         audio_sink: None,
         frames: None,
     });
-    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(e, Event::State(ConnState::Connected { .. }))));
+    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(
+        e,
+        Event::State(ConnState::Connected { .. })
+    )));
     drop(sim); // stops accepting; existing session ends via stop flag
-    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(e, Event::State(ConnState::Disconnected { .. }))));
+    assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(
+        e,
+        Event::State(ConnState::Disconnected { .. })
+    )));
     // Same port again.
     thread::sleep(Duration::from_millis(300));
     let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
     let stop = Arc::new(AtomicBool::new(false));
     let s = stop.clone();
     thread::spawn(move || lb_sim::serve(listener, key, Default::default(), s));
-    assert!(wait_for(&client.events, Duration::from_secs(15), |e| matches!(e, Event::State(ConnState::Connected { .. }))));
+    assert!(wait_for(&client.events, Duration::from_secs(15), |e| matches!(
+        e,
+        Event::State(ConnState::Connected { .. })
+    )));
     stop.store(true, Ordering::Relaxed);
 }

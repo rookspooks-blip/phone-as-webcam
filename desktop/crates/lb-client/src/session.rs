@@ -11,8 +11,8 @@ use std::time::{Duration, Instant};
 
 use crossbeam_channel::{select, tick, unbounded, Receiver, Sender};
 use lb_proto::{
-    client_handshake, Error as ProtoError, FrameReader, FrameWriter, HandshakeStatus, MediaHeader, PacketType, PairingKey,
-    CODEC_H264, CODEC_PCM_S16LE, PROTO_VERSION,
+    client_handshake, Error as ProtoError, FrameReader, FrameWriter, HandshakeStatus, MediaHeader, PacketType, PairingKey, CODEC_H264,
+    CODEC_PCM_S16LE, PROTO_VERSION,
 };
 use serde_json::{json, Map, Value};
 
@@ -44,9 +44,17 @@ pub struct ClientConfig {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConnState {
-    Connecting { attempt: u32 },
-    Connected { device: String, server: String },
-    Disconnected { reason: String, retry_in_ms: u64 },
+    Connecting {
+        attempt: u32,
+    },
+    Connected {
+        device: String,
+        server: String,
+    },
+    Disconnected {
+        reason: String,
+        retry_in_ms: u64,
+    },
     /// The phone does not know our key: scan the QR code on the phone.
     NotPaired,
     /// Another computer is streaming from this phone.
@@ -155,13 +163,19 @@ impl Drop for ClientHandle {
 pub fn spawn(cfg: ClientConfig) -> ClientHandle {
     let (cmd_tx, cmd_rx) = unbounded();
     let (ev_tx, ev_rx) = unbounded();
-    let frames = cfg.frames.clone().unwrap_or_else(LatestFrame::new);
+    let frames = cfg.frames.clone().unwrap_or_default();
     let frames2 = frames.clone();
     let thread = thread::Builder::new()
         .name("lb-session".into())
         .spawn(move || supervisor(cfg, cmd_rx, ev_tx, frames2))
         .expect("spawn session thread");
-    ClientHandle { cmd_tx, events: ev_rx, frames, next_id: AtomicU32::new(1), thread: Some(thread) }
+    ClientHandle {
+        cmd_tx,
+        events: ev_rx,
+        frames,
+        next_id: AtomicU32::new(1),
+        thread: Some(thread),
+    }
 }
 
 enum SessionEnd {
@@ -189,7 +203,13 @@ fn supervisor(cfg: ClientConfig, cmd_rx: Receiver<Command>, ev_tx: Sender<Event>
                 }
                 let wait = backoff;
                 backoff = (backoff * 2).min(BACKOFF_MAX);
-                (ConnState::Disconnected { reason: describe(&e), retry_in_ms: wait.as_millis() as u64 }, wait)
+                (
+                    ConnState::Disconnected {
+                        reason: describe(&e),
+                        retry_in_ms: wait.as_millis() as u64,
+                    },
+                    wait,
+                )
             }
         };
         let _ = ev_tx.send(Event::State(state));
@@ -216,7 +236,9 @@ fn supervisor(cfg: ClientConfig, cmd_rx: Receiver<Command>, ev_tx: Sender<Event>
 
 fn describe(e: &ProtoError) -> String {
     match e {
-        ProtoError::Io(io) if io.kind() == std::io::ErrorKind::ConnectionRefused => "соединение отклонено (приложение на телефоне не запущено?)".into(),
+        ProtoError::Io(io) if io.kind() == std::io::ErrorKind::ConnectionRefused => {
+            "соединение отклонено (приложение на телефоне не запущено?)".into()
+        }
         ProtoError::Io(io) if matches!(io.kind(), std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock) => {
             "таймаут (телефон не отвечает)".into()
         }
@@ -269,7 +291,10 @@ fn run_session_inner(
     let mut writer = FrameWriter::new(stream, &keys.c2s);
     let reader = FrameReader::new(reader_stream, &keys.s2c);
 
-    let shared = Arc::new(Shared { clock: Mutex::new(ClockSync::new()), stats: Mutex::new(StatsAccum::default()) });
+    let shared = Arc::new(Shared {
+        clock: Mutex::new(ClockSync::new()),
+        stats: Mutex::new(StatsAccum::default()),
+    });
     let (int_tx, int_rx) = unbounded();
     let reader_thread = {
         let shared = shared.clone();
@@ -423,7 +448,12 @@ fn reader_loop(
                 match decoder.decode(au) {
                     Ok(Some((width, height, i420))) => {
                         waiting_key = false;
-                        let latency = shared.clock.lock().unwrap().to_client(hdr.pts_us).map(|cap| recv_us.saturating_sub(cap));
+                        let latency = shared
+                            .clock
+                            .lock()
+                            .unwrap()
+                            .to_client(hdr.pts_us)
+                            .map(|cap| recv_us.saturating_sub(cap));
                         {
                             let mut st = shared.stats.lock().unwrap();
                             st.frames += 1;
@@ -435,7 +465,14 @@ fn reader_loop(
                                 st.latency_n += 1;
                             }
                         }
-                        frames.publish(VideoFrame { width, height, i420, pts_us: hdr.pts_us, seq: hdr.seq, recv_us });
+                        frames.publish(VideoFrame {
+                            width,
+                            height,
+                            i420,
+                            pts_us: hdr.pts_us,
+                            seq: hdr.seq,
+                            recv_us,
+                        });
                     }
                     Ok(None) => {}
                     Err(e) => {
@@ -456,7 +493,13 @@ fn reader_loop(
                 shared.stats.lock().unwrap().totals.audio_chunks += 1;
                 if let Some(sink) = &audio_sink {
                     let samples = data.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
-                    sink(AudioChunk { pts_us: hdr.pts_us, rate: audio_cfg.0, channels: audio_cfg.1, samples, discont: hdr.is_discont() });
+                    sink(AudioChunk {
+                        pts_us: hdr.pts_us,
+                        rate: audio_cfg.0,
+                        channels: audio_cfg.1,
+                        samples,
+                        discont: hdr.is_discont(),
+                    });
                 }
             }
             PacketType::Unknown(_) => {}

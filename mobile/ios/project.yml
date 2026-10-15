@@ -1,0 +1,72 @@
+# XcodeGen spec: `brew install xcodegen && xcodegen` generates Lensbridge.xcodeproj.
+name: Lensbridge
+options:
+  bundleIdPrefix: io.github.lensbridge
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Lensbridge:
+    type: application
+    platform: iOS
+    sources:
+      - Lensbridge
+    info:
+      path: Lensbridge/Info.plist
+      properties:
+        CFBundleDisplayName: Lensbridge
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSCameraUsageDescription: Lensbridge передаёт изображение камеры на ваш компьютер.
+        NSMicrophoneUsageDescription: Lensbridge передаёт звук микрофона на ваш компьютер.
+        NSLocalNetworkUsageDescription: Lensbridge принимает подключения от вашего компьютера в локальной сети.
+        NSBonjourServices:
+          - _lensbridge._tcp
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(LB_BUNDLE_ID)
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: $(LB_TEAM_ID)
+        ENABLE_PREVIEWS: NO
+  LensbridgeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - LensbridgeTests
+      - Lensbridge/Protocol
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: $(LB_BUNDLE_ID).tests
+        DEVELOPMENT_TEAM: $(LB_TEAM_ID)
+schemes:
+  Lensbridge:
+    build:
+      targets:
+        Lensbridge: all
+        LensbridgeTests: [test]
+    test:
+      targets:
+        - LensbridgeTests

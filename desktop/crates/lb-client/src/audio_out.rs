@@ -42,7 +42,10 @@ pub fn list_output_devices() -> Vec<String> {
 /// Finds an installed virtual audio cable (VB-Cable, BlackHole, ...).
 pub fn find_virtual_cable(devices: &[String]) -> Option<String> {
     const PATTERNS: [&str; 5] = ["cable input", "vb-audio", "blackhole", "voicemeeter input", "virtual audio cable"];
-    devices.iter().find(|d| PATTERNS.iter().any(|p| d.to_lowercase().contains(p))).cloned()
+    devices
+        .iter()
+        .find(|d| PATTERNS.iter().any(|p| d.to_lowercase().contains(p)))
+        .cloned()
 }
 
 struct Fifo {
@@ -115,14 +118,23 @@ impl AudioOutput {
             other => return Err(format!("формат {other} не поддерживается")),
         }?;
         stream.play().map_err(|e| e.to_string())?;
-        Ok(Self { _stream: stream, fifo, out_rate, device_name })
+        Ok(Self {
+            _stream: stream,
+            fifo,
+            out_rate,
+            device_name,
+        })
     }
 
     /// A thread-safe sink to plug into `ClientConfig::audio_sink`.
     pub fn sink(&self) -> AudioSink {
         let fifo = self.fifo.clone();
         let out_rate = self.out_rate;
-        let rs = Mutex::new(Resampler { ratio: 1.0, pos: 0.0, prev: 0.0 });
+        let rs = Mutex::new(Resampler {
+            ratio: 1.0,
+            pos: 0.0,
+            prev: 0.0,
+        });
         Arc::new(move |chunk: AudioChunk| {
             let ch = chunk.channels.max(1) as usize;
             let mono: Vec<f32> = chunk
@@ -198,7 +210,11 @@ mod tests {
 
     #[test]
     fn resampler_preserves_duration() {
-        let mut r = Resampler { ratio: 48_000.0 / 44_100.0, pos: 0.0, prev: 0.0 };
+        let mut r = Resampler {
+            ratio: 48_000.0 / 44_100.0,
+            pos: 0.0,
+            prev: 0.0,
+        };
         let mut out = Vec::new();
         for _ in 0..100 {
             r.process(&[0.5; 480], &mut out);

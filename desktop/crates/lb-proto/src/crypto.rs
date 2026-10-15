@@ -45,8 +45,10 @@ impl SessionKeys {
         let hk = Hkdf::<Sha256>::new(Some(&salt), psk);
         let mut c2s = [0u8; 32];
         let mut s2c = [0u8; 32];
-        hk.expand(Direction::ClientToServer.info(), &mut c2s).expect("32 bytes is a valid HKDF length");
-        hk.expand(Direction::ServerToClient.info(), &mut s2c).expect("32 bytes is a valid HKDF length");
+        hk.expand(Direction::ClientToServer.info(), &mut c2s)
+            .expect("32 bytes is a valid HKDF length");
+        hk.expand(Direction::ServerToClient.info(), &mut s2c)
+            .expect("32 bytes is a valid HKDF length");
         Self { c2s, s2c }
     }
 
@@ -66,7 +68,10 @@ pub struct CipherState {
 
 impl CipherState {
     pub fn new(key: &[u8; 32]) -> Self {
-        Self { cipher: ChaCha20Poly1305::new_from_slice(key).expect("32-byte key"), counter: 0 }
+        Self {
+            cipher: ChaCha20Poly1305::new_from_slice(key).expect("32-byte key"),
+            counter: 0,
+        }
     }
 
     fn next_nonce(&mut self) -> Nonce {
@@ -78,7 +83,9 @@ impl CipherState {
 
     pub fn seal(&mut self, plaintext: &[u8]) -> Vec<u8> {
         let nonce = self.next_nonce();
-        self.cipher.encrypt(&nonce, plaintext).expect("encryption cannot fail for in-memory buffers")
+        self.cipher
+            .encrypt(&nonce, plaintext)
+            .expect("encryption cannot fail for in-memory buffers")
     }
 
     pub fn open(&mut self, ciphertext: &[u8]) -> Result<Vec<u8>> {

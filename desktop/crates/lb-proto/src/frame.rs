@@ -54,7 +54,11 @@ pub struct FrameWriter<W: Write> {
 
 impl<W: Write> FrameWriter<W> {
     pub fn new(inner: W, key: &[u8; 32]) -> Self {
-        Self { inner, cipher: CipherState::new(key), buf: Vec::new() }
+        Self {
+            inner,
+            cipher: CipherState::new(key),
+            buf: Vec::new(),
+        }
     }
 
     pub fn write_packet(&mut self, ty: PacketType, payload: &[u8]) -> Result<()> {
@@ -92,7 +96,10 @@ pub struct FrameReader<R: Read> {
 
 impl<R: Read> FrameReader<R> {
     pub fn new(inner: R, key: &[u8; 32]) -> Self {
-        Self { inner, cipher: CipherState::new(key) }
+        Self {
+            inner,
+            cipher: CipherState::new(key),
+        }
     }
 
     pub fn read_packet(&mut self) -> Result<Packet> {

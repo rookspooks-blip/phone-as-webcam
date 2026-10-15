@@ -18,9 +18,18 @@ pub enum SavedTarget {
 impl From<&Target> for SavedTarget {
     fn from(t: &Target) -> Self {
         match t {
-            Target::Tcp { host, port } => SavedTarget::Tcp { host: host.clone(), port: *port },
-            Target::Usbmux { udid, port } => SavedTarget::Usbmux { udid: udid.clone(), port: *port },
-            Target::Adb { serial, port } => SavedTarget::Adb { serial: serial.clone(), port: *port },
+            Target::Tcp { host, port } => SavedTarget::Tcp {
+                host: host.clone(),
+                port: *port,
+            },
+            Target::Usbmux { udid, port } => SavedTarget::Usbmux {
+                udid: udid.clone(),
+                port: *port,
+            },
+            Target::Adb { serial, port } => SavedTarget::Adb {
+                serial: serial.clone(),
+                port: *port,
+            },
         }
     }
 }
@@ -28,9 +37,18 @@ impl From<&Target> for SavedTarget {
 impl From<&SavedTarget> for Target {
     fn from(t: &SavedTarget) -> Self {
         match t {
-            SavedTarget::Tcp { host, port } => Target::Tcp { host: host.clone(), port: *port },
-            SavedTarget::Usbmux { udid, port } => Target::Usbmux { udid: udid.clone(), port: *port },
-            SavedTarget::Adb { serial, port } => Target::Adb { serial: serial.clone(), port: *port },
+            SavedTarget::Tcp { host, port } => Target::Tcp {
+                host: host.clone(),
+                port: *port,
+            },
+            SavedTarget::Usbmux { udid, port } => Target::Usbmux {
+                udid: udid.clone(),
+                port: *port,
+            },
+            SavedTarget::Adb { serial, port } => Target::Adb {
+                serial: serial.clone(),
+                port: *port,
+            },
         }
     }
 }
@@ -113,7 +131,12 @@ fn write_private(path: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
     {
         use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
-        let mut f = std::fs::OpenOptions::new().create(true).write(true).truncate(true).mode(0o600).open(path)?;
+        let mut f = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)?;
         f.write_all(data)
     }
     #[cfg(not(unix))]
@@ -150,19 +173,39 @@ fn decode_key(s: &str) -> Option<PairingKey> {
 #[cfg(windows)]
 mod dpapi {
     use windows_sys::Win32::Foundation::LocalFree;
-    use windows_sys::Win32::Security::Cryptography::{
-        CryptProtectData, CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB,
-    };
+    use windows_sys::Win32::Security::Cryptography::{CryptProtectData, CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB};
 
     fn call(input: &[u8], protect: bool) -> Option<Vec<u8>> {
-        let in_blob = CRYPT_INTEGER_BLOB { cbData: input.len() as u32, pbData: input.as_ptr() as *mut u8 };
-        let mut out = CRYPT_INTEGER_BLOB { cbData: 0, pbData: std::ptr::null_mut() };
+        let in_blob = CRYPT_INTEGER_BLOB {
+            cbData: input.len() as u32,
+            pbData: input.as_ptr() as *mut u8,
+        };
+        let mut out = CRYPT_INTEGER_BLOB {
+            cbData: 0,
+            pbData: std::ptr::null_mut(),
+        };
         // SAFETY: valid input blob, out blob is filled by the API and freed with LocalFree.
         let ok = unsafe {
             if protect {
-                CryptProtectData(&in_blob, std::ptr::null(), std::ptr::null(), std::ptr::null(), std::ptr::null(), CRYPTPROTECT_UI_FORBIDDEN, &mut out)
+                CryptProtectData(
+                    &in_blob,
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    CRYPTPROTECT_UI_FORBIDDEN,
+                    &mut out,
+                )
             } else {
-                CryptUnprotectData(&in_blob, std::ptr::null_mut(), std::ptr::null(), std::ptr::null(), std::ptr::null(), CRYPTPROTECT_UI_FORBIDDEN, &mut out)
+                CryptUnprotectData(
+                    &in_blob,
+                    std::ptr::null_mut(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    CRYPTPROTECT_UI_FORBIDDEN,
+                    &mut out,
+                )
             }
         };
         if ok == 0 || out.pbData.is_null() {
@@ -195,7 +238,10 @@ mod tests {
 
     #[test]
     fn target_roundtrip() {
-        let t = Target::Usbmux { udid: "abc".into(), port: 4748 };
+        let t = Target::Usbmux {
+            udid: "abc".into(),
+            port: 4748,
+        };
         let s = SavedTarget::from(&t);
         let json = serde_json::to_string(&s).unwrap();
         assert!(json.contains("\"kind\":\"usbmux\""));

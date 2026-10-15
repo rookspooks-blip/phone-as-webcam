@@ -54,11 +54,17 @@ fn parse_caps(v: &Value) -> Vec<CameraCaps> {
             id: c["id"].as_str().unwrap_or_default().to_string(),
             name: c["name"].as_str().unwrap_or("Камера").to_string(),
             formats,
-            zoom: (c["zoom_min"].as_f64().unwrap_or(1.0) as f32, c["zoom_max"].as_f64().unwrap_or(1.0) as f32),
+            zoom: (
+                c["zoom_min"].as_f64().unwrap_or(1.0) as f32,
+                c["zoom_max"].as_f64().unwrap_or(1.0) as f32,
+            ),
             torch: c["torch"].as_bool().unwrap_or(false),
             focus_poi: c["focus_poi"].as_bool().unwrap_or(false),
             exposure_poi: c["exposure_poi"].as_bool().unwrap_or(false),
-            ev: (c["ev_min"].as_f64().unwrap_or(0.0) as f32, c["ev_max"].as_f64().unwrap_or(0.0) as f32),
+            ev: (
+                c["ev_min"].as_f64().unwrap_or(0.0) as f32,
+                c["ev_max"].as_f64().unwrap_or(0.0) as f32,
+            ),
         });
     }
     out
@@ -128,7 +134,11 @@ impl LensbridgeApp {
             preview_size: (0, 0),
             cameras: Vec::new(),
             state: json!({}),
-            sliders: Sliders { bitrate_mbps: 6.0, zoom: 1.0, ev: 0.0 },
+            sliders: Sliders {
+                bitrate_mbps: 6.0,
+                zoom: 1.0,
+                ev: 0.0,
+            },
             stats: ClientStats::default(),
             mirror,
             vcam: None,
@@ -297,7 +307,11 @@ impl LensbridgeApp {
                 self.note(text);
             }
             "error" => {
-                let m = format!("Ошибка телефона: {} {}", v["code"].as_str().unwrap_or(""), v["message"].as_str().unwrap_or(""));
+                let m = format!(
+                    "Ошибка телефона: {} {}",
+                    v["code"].as_str().unwrap_or(""),
+                    v["message"].as_str().unwrap_or("")
+                );
                 self.note(m);
             }
             _ => {}
@@ -419,7 +433,13 @@ impl LensbridgeApp {
                 .inner;
             if stale {
                 ui.painter().rect_filled(resp.rect, 0.0, Color32::from_black_alpha(150));
-                ui.painter().text(resp.rect.center(), egui::Align2::CENTER_CENTER, "нет сигнала", egui::FontId::proportional(28.0), Color32::WHITE);
+                ui.painter().text(
+                    resp.rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "нет сигнала",
+                    egui::FontId::proportional(28.0),
+                    Color32::WHITE,
+                );
             }
             if let Some(pos) = resp.interact_pointer_pos().filter(|_| resp.clicked()) {
                 let mut x = ((pos.x - resp.rect.left()) / resp.rect.width()).clamp(0.0, 1.0);
@@ -455,7 +475,9 @@ impl LensbridgeApp {
                 "Телефон не знает этот ПК.\nНажмите «Показать QR для телефона» и отсканируйте его в приложении Lensbridge.".into()
             }
             Some(ConnState::Busy) => "Телефон уже передаёт видео на другой компьютер".into(),
-            Some(ConnState::Disconnected { reason, retry_in_ms }) => format!("Нет связи: {reason}\nПовтор через {:.1} с", *retry_in_ms as f32 / 1000.0),
+            Some(ConnState::Disconnected { reason, retry_in_ms }) => {
+                format!("Нет связи: {reason}\nПовтор через {:.1} с", *retry_in_ms as f32 / 1000.0)
+            }
             Some(ConnState::Connected { .. }) => "Ожидание первого кадра…".into(),
             Some(ConnState::Stopped) => "Остановлено".into(),
         }
@@ -489,7 +511,10 @@ impl LensbridgeApp {
         }
 
         // Resolution
-        let (w, h) = (self.state["w"].as_u64().unwrap_or(0) as u32, self.state["h"].as_u64().unwrap_or(0) as u32);
+        let (w, h) = (
+            self.state["w"].as_u64().unwrap_or(0) as u32,
+            self.state["h"].as_u64().unwrap_or(0) as u32,
+        );
         let mut sel = (w, h);
         egui::ComboBox::from_label("Разрешение")
             .selected_text(format!("{w}×{h}"))
@@ -508,17 +533,24 @@ impl LensbridgeApp {
         let (min_fps, max_fps) = fmt.map(|f| (f.2, f.3)).unwrap_or((1, 30));
         let fps = self.state["fps"].as_u64().unwrap_or(30) as u32;
         let mut new_fps = fps;
-        egui::ComboBox::from_label("Кадров/с").selected_text(fps.to_string()).width(200.0).show_ui(ui, |ui| {
-            for f in FPS_CHOICES.iter().copied().filter(|f| *f >= min_fps && *f <= max_fps) {
-                ui.selectable_value(&mut new_fps, f, f.to_string());
-            }
-        });
+        egui::ComboBox::from_label("Кадров/с")
+            .selected_text(fps.to_string())
+            .width(200.0)
+            .show_ui(ui, |ui| {
+                for f in FPS_CHOICES.iter().copied().filter(|f| *f >= min_fps && *f <= max_fps) {
+                    ui.selectable_value(&mut new_fps, f, f.to_string());
+                }
+            });
         if new_fps != fps {
             self.set(json!({"fps": new_fps}));
         }
 
         // Bitrate
-        let r = ui.add(egui::Slider::new(&mut self.sliders.bitrate_mbps, 0.5..=30.0).text("Мбит/с").fixed_decimals(1));
+        let r = ui.add(
+            egui::Slider::new(&mut self.sliders.bitrate_mbps, 0.5..=30.0)
+                .text("Мбит/с")
+                .fixed_decimals(1),
+        );
         if r.drag_stopped() || (r.changed() && !r.dragged()) {
             let b = (self.sliders.bitrate_mbps * 1e6) as u64;
             self.set(json!({"bitrate": b}));
@@ -526,7 +558,12 @@ impl LensbridgeApp {
 
         // Zoom
         if cam.zoom.1 > cam.zoom.0 {
-            let r = ui.add(egui::Slider::new(&mut self.sliders.zoom, cam.zoom.0..=cam.zoom.1).text("Зум").logarithmic(true).fixed_decimals(1));
+            let r = ui.add(
+                egui::Slider::new(&mut self.sliders.zoom, cam.zoom.0..=cam.zoom.1)
+                    .text("Зум")
+                    .logarithmic(true)
+                    .fixed_decimals(1),
+            );
             if r.changed() {
                 let z = self.sliders.zoom;
                 self.set(json!({"zoom": z}));
@@ -535,7 +572,11 @@ impl LensbridgeApp {
 
         // Exposure compensation
         if cam.ev.1 > cam.ev.0 {
-            let r = ui.add(egui::Slider::new(&mut self.sliders.ev, cam.ev.0..=cam.ev.1).text("Экспозиция (EV)").fixed_decimals(1));
+            let r = ui.add(
+                egui::Slider::new(&mut self.sliders.ev, cam.ev.0..=cam.ev.1)
+                    .text("Экспозиция (EV)")
+                    .fixed_decimals(1),
+            );
             if r.drag_stopped() || (r.changed() && !r.dragged()) {
                 let e = self.sliders.ev;
                 self.set(json!({"ev": e}));
@@ -593,9 +634,17 @@ impl LensbridgeApp {
         }
         if cfg!(windows) {
             if vcam::filter_installed() {
-                ui.label(RichText::new("Драйвер камеры установлен").small().color(Color32::from_rgb(90, 170, 90)));
+                ui.label(
+                    RichText::new("Драйвер камеры установлен")
+                        .small()
+                        .color(Color32::from_rgb(90, 170, 90)),
+                );
             } else {
-                ui.label(RichText::new("Драйвер камеры не установлен: Zoom/OBS её не увидят").small().color(Color32::from_rgb(220, 160, 60)));
+                ui.label(
+                    RichText::new("Драйвер камеры не установлен: Zoom/OBS её не увидят")
+                        .small()
+                        .color(Color32::from_rgb(220, 160, 60)),
+                );
                 if ui.button("Установить (нужны права администратора)").clicked() {
                     match vcam::install_filter(true) {
                         Ok(()) => self.note("Запрошена установка виртуальной камеры"),
@@ -619,7 +668,11 @@ impl LensbridgeApp {
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut sel, None, "не выводить");
                 for d in &self.audio_devices {
-                    let label = if Some(d) == cable.as_ref() { format!("{d}  ← микрофон для звонков") } else { d.clone() };
+                    let label = if Some(d) == cable.as_ref() {
+                        format!("{d}  ← микрофон для звонков")
+                    } else {
+                        d.clone()
+                    };
                     ui.selectable_value(&mut sel, Some(d.clone()), label);
                 }
             });
@@ -685,7 +738,12 @@ impl LensbridgeApp {
     fn diagnostics_report(&self) -> String {
         let s = &self.stats;
         let mut r = String::new();
-        r += &format!("Lensbridge {} ({} {})\n", env!("CARGO_PKG_VERSION"), std::env::consts::OS, std::env::consts::ARCH);
+        r += &format!(
+            "Lensbridge {} ({} {})\n",
+            env!("CARGO_PKG_VERSION"),
+            std::env::consts::OS,
+            std::env::consts::ARCH
+        );
         r += &format!("Цель: {}\n", self.target.as_ref().map(|t| t.label()).unwrap_or_else(|| "-".into()));
         r += &format!("Состояние: {:?}\n", self.conn);
         r += &format!("Ключ (id): {}\n", self.key.key_id_hex());
@@ -697,19 +755,33 @@ impl LensbridgeApp {
             "Кадров всего {}, пропущено {}, ошибок декодера {}, аудио-пакетов {}\n",
             s.frames_total, s.frames_dropped, s.decode_errors, s.audio_chunks
         );
-        r += &format!("Телефон: {}\n", s.phone.as_ref().map(|p| p.to_string()).unwrap_or_else(|| "-".into()));
+        r += &format!(
+            "Телефон: {}\n",
+            s.phone.as_ref().map(|p| p.to_string()).unwrap_or_else(|| "-".into())
+        );
         r += &format!("Состояние камеры: {}\n", self.state);
         r += &format!(
             "Виртуальная камера: {} (драйвер {}, записано кадров {})\n",
             if self.vcam.is_some() { "вкл" } else { "выкл" },
-            if vcam::filter_installed() { "установлен" } else { "не установлен" },
+            if vcam::filter_installed() {
+                "установлен"
+            } else {
+                "не установлен"
+            },
             self.vcam.as_ref().map(|v| v.frames_written()).unwrap_or(0)
         );
         if let Some(e) = &self.vcam_error {
             r += &format!("  ошибка: {e}\n");
         }
         match &self.audio_out {
-            Some(a) => r += &format!("Звук: {} (буфер {:.0} мс, опустошений {})\n", a.device_name, a.buffered_ms(), a.underruns()),
+            Some(a) => {
+                r += &format!(
+                    "Звук: {} (буфер {:.0} мс, опустошений {})\n",
+                    a.device_name,
+                    a.buffered_ms(),
+                    a.underruns()
+                )
+            }
             None => r += &format!("Звук: выкл {}\n", self.audio_error.clone().unwrap_or_default()),
         }
         for p in self.discovery.problems() {
@@ -731,49 +803,64 @@ impl LensbridgeApp {
                     self.qr_texture = Some(ctx.load_texture("pairing-qr", img, TextureOptions::NEAREST));
                 }
             }
-            egui::Window::new("Пейринг с телефоном").open(&mut open).resizable(false).collapsible(false).show(ctx, |ui| {
-                ui.label("1. Откройте Lensbridge на телефоне → «Сопрячь с ПК».");
-                ui.label("2. Наведите камеру телефона на этот код.");
-                ui.label(RichText::new("Код содержит секретный ключ: не показывайте его посторонним.").small().weak());
-                if let Some(t) = &self.qr_texture {
-                    ui.add(egui::Image::new(t).fit_to_exact_size(Vec2::splat(300.0)));
-                }
-                ui.horizontal(|ui| {
-                    if ui.button("Скопировать ссылку").on_hover_text("Для симулятора lb-sim --uri или ручного ввода").clicked() {
-                        ui.ctx().copy_text(uri.clone());
+            egui::Window::new("Пейринг с телефоном")
+                .open(&mut open)
+                .resizable(false)
+                .collapsible(false)
+                .show(ctx, |ui| {
+                    ui.label("1. Откройте Lensbridge на телефоне → «Сопрячь с ПК».");
+                    ui.label("2. Наведите камеру телефона на этот код.");
+                    ui.label(
+                        RichText::new("Код содержит секретный ключ: не показывайте его посторонним.")
+                            .small()
+                            .weak(),
+                    );
+                    if let Some(t) = &self.qr_texture {
+                        ui.add(egui::Image::new(t).fit_to_exact_size(Vec2::splat(300.0)));
                     }
-                    if ui.button("Новый ключ…").clicked() {
-                        self.confirm_new_key = true;
-                    }
-                });
-                if self.confirm_new_key {
-                    ui.separator();
-                    ui.label("Новый ключ отменит доступ всем уже сопряжённым телефонам. Продолжить?");
                     ui.horizontal(|ui| {
-                        if ui.button("Да, создать").clicked() {
-                            self.confirm_new_key = false;
-                            self.new_key();
+                        if ui
+                            .button("Скопировать ссылку")
+                            .on_hover_text("Для симулятора lb-sim --uri или ручного ввода")
+                            .clicked()
+                        {
+                            ui.ctx().copy_text(uri.clone());
                         }
-                        if ui.button("Отмена").clicked() {
-                            self.confirm_new_key = false;
+                        if ui.button("Новый ключ…").clicked() {
+                            self.confirm_new_key = true;
                         }
                     });
-                }
-            });
+                    if self.confirm_new_key {
+                        ui.separator();
+                        ui.label("Новый ключ отменит доступ всем уже сопряжённым телефонам. Продолжить?");
+                        ui.horizontal(|ui| {
+                            if ui.button("Да, создать").clicked() {
+                                self.confirm_new_key = false;
+                                self.new_key();
+                            }
+                            if ui.button("Отмена").clicked() {
+                                self.confirm_new_key = false;
+                            }
+                        });
+                    }
+                });
             self.show_pairing = open;
         }
 
         if self.show_diag {
             let mut open = true;
             let report = self.diagnostics_report();
-            egui::Window::new("Диагностика").open(&mut open).default_width(640.0).show(ctx, |ui| {
-                if ui.button("Скопировать отчёт").clicked() {
-                    ui.ctx().copy_text(report.clone());
-                }
-                egui::ScrollArea::vertical().max_height(420.0).show(ui, |ui| {
-                    ui.add(egui::Label::new(RichText::new(&report).monospace()).wrap());
+            egui::Window::new("Диагностика")
+                .open(&mut open)
+                .default_width(640.0)
+                .show(ctx, |ui| {
+                    if ui.button("Скопировать отчёт").clicked() {
+                        ui.ctx().copy_text(report.clone());
+                    }
+                    egui::ScrollArea::vertical().max_height(420.0).show(ui, |ui| {
+                        ui.add(egui::Label::new(RichText::new(&report).monospace()).wrap());
+                    });
                 });
-            });
             self.show_diag = open;
         }
     }
@@ -786,12 +873,22 @@ impl eframe::App for LensbridgeApp {
         self.update_preview(&ctx);
 
         egui::Panel::bottom("status").show(ui, |ui| self.ui_status(ui));
-        egui::Panel::left("devices").resizable(true).default_size(250.0).show(ui, |ui| self.ui_left(ui));
-        egui::Panel::right("controls").resizable(true).default_size(320.0).show(ui, |ui| self.ui_right(ui));
+        egui::Panel::left("devices")
+            .resizable(true)
+            .default_size(250.0)
+            .show(ui, |ui| self.ui_left(ui));
+        egui::Panel::right("controls")
+            .resizable(true)
+            .default_size(320.0)
+            .show(ui, |ui| self.ui_right(ui));
         egui::CentralPanel::default().show(ui, |ui| self.ui_preview(ui));
         self.ui_windows(&ctx);
 
-        let interval = if self.client.is_some() { Duration::from_millis(15) } else { Duration::from_millis(250) };
+        let interval = if self.client.is_some() {
+            Duration::from_millis(15)
+        } else {
+            Duration::from_millis(250)
+        };
         ctx.request_repaint_after(interval);
     }
 }

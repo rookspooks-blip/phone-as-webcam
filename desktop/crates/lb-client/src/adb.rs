@@ -50,7 +50,10 @@ pub fn find_adb() -> Option<PathBuf> {
 
 fn run(args: &[&str]) -> io::Result<Output> {
     let adb = find_adb().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::NotFound, "adb не найден: установите Android platform-tools и добавьте в PATH")
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "adb не найден: установите Android platform-tools и добавьте в PATH",
+        )
     })?;
     let mut cmd = Command::new(adb);
     cmd.args(args);

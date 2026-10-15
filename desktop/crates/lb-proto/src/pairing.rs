@@ -49,7 +49,9 @@ impl PairingKey {
     }
 
     pub fn from_base64(s: &str) -> Result<Self> {
-        let raw = URL_SAFE_NO_PAD.decode(s.trim()).map_err(|_| Error::BadPairingUri("key is not base64url"))?;
+        let raw = URL_SAFE_NO_PAD
+            .decode(s.trim())
+            .map_err(|_| Error::BadPairingUri("key is not base64url"))?;
         let bytes: [u8; 32] = raw.try_into().map_err(|_| Error::BadPairingUri("key must be 32 bytes"))?;
         Ok(Self(bytes))
     }
@@ -60,7 +62,10 @@ impl PairingKey {
 
     /// Parse a pairing URI; returns the key and the PC name.
     pub fn parse_uri(uri: &str) -> Result<(Self, String)> {
-        let rest = uri.trim().strip_prefix("lensbridge://pair?").ok_or(Error::BadPairingUri("wrong scheme"))?;
+        let rest = uri
+            .trim()
+            .strip_prefix("lensbridge://pair?")
+            .ok_or(Error::BadPairingUri("wrong scheme"))?;
         let (mut v, mut k, mut n) = (None, None, String::new());
         for part in rest.split('&') {
             let (key, val) = part.split_once('=').unwrap_or((part, ""));

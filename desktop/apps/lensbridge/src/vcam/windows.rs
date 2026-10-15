@@ -145,7 +145,11 @@ impl VcamWriter {
                 }
             })
             .map_err(|e| e.to_string())?;
-        Ok(Self { stop, written, thread: Some(thread) })
+        Ok(Self {
+            stop,
+            written,
+            thread: Some(thread),
+        })
     }
 
     pub fn frames_written(&self) -> u64 {
@@ -177,7 +181,10 @@ pub fn filter_installed() -> bool {
 }
 
 fn filter_dlls() -> Vec<PathBuf> {
-    let dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())).unwrap_or_default();
+    let dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_default();
     ["lensbridge_vcam.dll", "lensbridge_vcam_x86.dll"]
         .iter()
         .flat_map(|n| [dir.join("vcam").join(n), dir.join(n)])
@@ -201,15 +208,29 @@ pub fn install_filter(install: bool) -> Result<(), String> {
         // 32-bit DLLs must be registered by the 32-bit regsvr32 (SysWOW64).
         let is_x86 = dll.to_string_lossy().ends_with("_x86.dll");
         let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
-        let regsvr = if is_x86 { format!("{windir}\\SysWOW64\\regsvr32.exe") } else { format!("{windir}\\System32\\regsvr32.exe") };
+        let regsvr = if is_x86 {
+            format!("{windir}\\SysWOW64\\regsvr32.exe")
+        } else {
+            format!("{windir}\\System32\\regsvr32.exe")
+        };
         let params = format!("/s {}\"{}\"", if install { "" } else { "/u " }, dll.display());
         let (verb, file, params) = (wide("runas"), wide(&regsvr), wide(&params));
         // SAFETY: valid null-terminated wide strings.
         let rc = unsafe {
-            ShellExecuteW(std::ptr::null_mut(), verb.as_ptr(), file.as_ptr(), params.as_ptr(), std::ptr::null(), SW_HIDE)
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                verb.as_ptr(),
+                file.as_ptr(),
+                params.as_ptr(),
+                std::ptr::null(),
+                SW_HIDE,
+            )
         };
         if (rc as isize) <= 32 {
-            return Err(format!("не удалось запустить regsvr32 (код {}). Запустите от администратора вручную", rc as isize));
+            return Err(format!(
+                "не удалось запустить regsvr32 (код {}). Запустите от администратора вручную",
+                rc as isize
+            ));
         }
     }
     Ok(())

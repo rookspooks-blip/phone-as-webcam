@@ -59,7 +59,12 @@ mod tests {
 
     #[test]
     fn roundtrip() {
-        let h = MediaHeader { codec: CODEC_H264, flags: FLAG_KEY | FLAG_CONFIG, seq: 0x01020304, pts_us: 0x1122334455667788 };
+        let h = MediaHeader {
+            codec: CODEC_H264,
+            flags: FLAG_KEY | FLAG_CONFIG,
+            seq: 0x01020304,
+            pts_us: 0x1122334455667788,
+        };
         let bytes = h.encode_with(&[9, 9]);
         assert_eq!(&bytes[..14], &[2, 3, 1, 2, 3, 4, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88]);
         let (p, data) = MediaHeader::parse(&bytes).unwrap();

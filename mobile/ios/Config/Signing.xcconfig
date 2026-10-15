@@ -1,0 +1,6 @@
+// Signing settings. Do not edit: create Config/Local.xcconfig (git-ignored) with
+//   LB_TEAM_ID = ABCDE12345          // your (free) Apple ID team, see README
+//   LB_BUNDLE_ID = com.yourname.lensbridge   // must be unique for a free Apple ID
+LB_TEAM_ID =
+LB_BUNDLE_ID = io.github.lensbridge.app
+#include? "Local.xcconfig"

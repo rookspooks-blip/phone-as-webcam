@@ -31,7 +31,9 @@ fn open_socket() -> io::Result<Box<dyn Duplex>> {
         let s = std::net::TcpStream::connect(("127.0.0.1", 27015)).map_err(|e| {
             io::Error::new(
                 e.kind(),
-                format!("служба Apple Mobile Device недоступна ({e}). Установите приложение «Устройства Apple» (Microsoft Store) или iTunes"),
+                format!(
+                    "служба Apple Mobile Device недоступна ({e}). Установите приложение «Устройства Apple» (Microsoft Store) или iTunes"
+                ),
             )
         })?;
         s.set_nodelay(true)?;
@@ -40,8 +42,12 @@ fn open_socket() -> io::Result<Box<dyn Duplex>> {
     #[cfg(unix)]
     {
         let path = std::env::var("USBMUXD_SOCKET_ADDRESS").unwrap_or_else(|_| "/var/run/usbmuxd".into());
-        let s = std::os::unix::net::UnixStream::connect(&path)
-            .map_err(|e| io::Error::new(e.kind(), format!("usbmuxd недоступен по {path} ({e}). На Linux установите пакет usbmuxd")))?;
+        let s = std::os::unix::net::UnixStream::connect(&path).map_err(|e| {
+            io::Error::new(
+                e.kind(),
+                format!("usbmuxd недоступен по {path} ({e}). На Linux установите пакет usbmuxd"),
+            )
+        })?;
         Ok(Box::new(s))
     }
 }
@@ -49,7 +55,10 @@ fn open_socket() -> io::Result<Box<dyn Duplex>> {
 fn request(kind: &str) -> Dictionary {
     let mut d = Dictionary::new();
     d.insert("MessageType".into(), Value::String(kind.into()));
-    d.insert("ClientVersionString".into(), Value::String(concat!("lensbridge ", env!("CARGO_PKG_VERSION")).into()));
+    d.insert(
+        "ClientVersionString".into(),
+        Value::String(concat!("lensbridge ", env!("CARGO_PKG_VERSION")).into()),
+    );
     d.insert("ProgName".into(), Value::String("lensbridge".into()));
     d
 }
@@ -91,7 +100,9 @@ pub fn list_devices() -> io::Result<Vec<UsbDevice>> {
     if let Some(Value::Array(list)) = reply.get("DeviceList") {
         for entry in list {
             let Some(d) = entry.as_dictionary() else { continue };
-            let Some(props) = d.get("Properties").and_then(Value::as_dictionary) else { continue };
+            let Some(props) = d.get("Properties").and_then(Value::as_dictionary) else {
+                continue;
+            };
             if props.get("ConnectionType").and_then(Value::as_string) != Some("USB") {
                 continue;
             }
@@ -114,10 +125,12 @@ pub fn list_devices() -> io::Result<Vec<UsbDevice>> {
 
 /// Opens a tunnel to `port` on the device with the given UDID.
 pub fn connect(udid: &str, port: u16) -> io::Result<Box<dyn Duplex>> {
-    let dev = list_devices()?
-        .into_iter()
-        .find(|d| d.udid == udid)
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "iPhone не подключён по USB (или не нажато «Доверять этому компьютеру»)"))?;
+    let dev = list_devices()?.into_iter().find(|d| d.udid == udid).ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "iPhone не подключён по USB (или не нажато «Доверять этому компьютеру»)",
+        )
+    })?;
     let mut sock = open_socket()?;
     let mut req = request("Connect");
     req.insert("DeviceID".into(), Value::Integer(dev.device_id.into()));
@@ -127,7 +140,10 @@ pub fn connect(udid: &str, port: u16) -> io::Result<Box<dyn Duplex>> {
     let reply = recv(sock.as_mut())?;
     match reply.get("Number").and_then(Value::as_unsigned_integer) {
         Some(0) => Ok(sock),
-        Some(3) => Err(io::Error::new(io::ErrorKind::ConnectionRefused, "приложение Lensbridge на iPhone не запущено (порт закрыт)")),
+        Some(3) => Err(io::Error::new(
+            io::ErrorKind::ConnectionRefused,
+            "приложение Lensbridge на iPhone не запущено (порт закрыт)",
+        )),
         Some(n) => Err(io::Error::other(format!("usbmuxd Connect вернул код {n}"))),
         None => Err(io::Error::new(io::ErrorKind::InvalidData, "usbmuxd: ответ без кода")),
     }

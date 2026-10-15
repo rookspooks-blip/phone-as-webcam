@@ -20,7 +20,13 @@ fn main() {
     let mut opts = SimOptions::default();
     while let Some(a) = args.next() {
         match a.as_str() {
-            "--uri" => key = Some(PairingKey::parse_uri(&args.next().expect("--uri value")).expect("valid pairing URI").0),
+            "--uri" => {
+                key = Some(
+                    PairingKey::parse_uri(&args.next().expect("--uri value"))
+                        .expect("valid pairing URI")
+                        .0,
+                )
+            }
             "--port" => port = args.next().expect("--port value").parse().expect("port number"),
             "--name" => opts.device_name = args.next().expect("--name value"),
             "-h" | "--help" => {
@@ -32,7 +38,10 @@ fn main() {
     }
     let key = key.unwrap_or_else(|| {
         let k = PairingKey::generate();
-        println!("Generated pairing key. Paste this URI into the desktop app (Pairing → Import):\n{}", k.to_uri("lb-sim"));
+        println!(
+            "Generated pairing key. Paste this URI into the desktop app (Pairing → Import):\n{}",
+            k.to_uri("lb-sim")
+        );
         k
     });
     let listener = TcpListener::bind(("0.0.0.0", port)).expect("bind");

@@ -8,3 +8,6 @@ local.properties
 *.iml
 .idea/
 .DS_Store
+mobile/ios/Config/Local.xcconfig
+mobile/ios/Lensbridge.xcodeproj/
+mobile/ios/Lensbridge/Info.plist

@@ -40,7 +40,10 @@ impl Discovery {
         }
         {
             let state = state.clone();
-            thread::Builder::new().name("usb-scan".into()).spawn(move || usb_loop(state, ctx)).ok();
+            thread::Builder::new()
+                .name("usb-scan".into())
+                .spawn(move || usb_loop(state, ctx))
+                .ok();
         }
         Self { state }
     }
@@ -52,7 +55,11 @@ impl Discovery {
 
     pub fn problems(&self) -> Vec<String> {
         let s = self.state.lock().unwrap();
-        [&s.mdns_error, &s.usbmux_error, &s.adb_error].into_iter().flatten().cloned().collect()
+        [&s.mdns_error, &s.usbmux_error, &s.adb_error]
+            .into_iter()
+            .flatten()
+            .cloned()
+            .collect()
     }
 }
 
@@ -85,7 +92,11 @@ fn mdns_loop(state: Arc<Mutex<State>>, ctx: eframe::egui::Context) {
                     .map(str::to_string)
                     .unwrap_or_else(|| info.get_fullname().split('.').next().unwrap_or("Телефон").to_string());
                 let port = if info.get_port() == 0 { DEFAULT_PORT } else { info.get_port() };
-                let found = Found { name, detail: format!("Wi-Fi {host}:{port}"), target: Target::Tcp { host, port } };
+                let found = Found {
+                    name,
+                    detail: format!("Wi-Fi {host}:{port}"),
+                    target: Target::Tcp { host, port },
+                };
                 state.lock().unwrap().wifi.insert(info.get_fullname().to_string(), found);
                 ctx.request_repaint();
             }
@@ -107,7 +118,10 @@ fn usb_loop(state: Arc<Mutex<State>>, ctx: eframe::egui::Context) {
                     usb.push(Found {
                         name: "iPhone (USB)".into(),
                         detail: format!("USB · {}", &d.udid[..d.udid.len().min(12)]),
-                        target: Target::Usbmux { udid: d.udid, port: DEFAULT_PORT },
+                        target: Target::Usbmux {
+                            udid: d.udid,
+                            port: DEFAULT_PORT,
+                        },
                     });
                 }
                 None
@@ -124,13 +138,19 @@ fn usb_loop(state: Arc<Mutex<State>>, ctx: eframe::egui::Context) {
                             usb.push(Found {
                                 name: d.model.clone().unwrap_or_else(|| "Android (USB)".into()),
                                 detail: format!("USB · adb {}", d.serial),
-                                target: Target::Adb { serial: Some(d.serial), port: DEFAULT_PORT },
+                                target: Target::Adb {
+                                    serial: Some(d.serial),
+                                    port: DEFAULT_PORT,
+                                },
                             });
                         } else if d.state == "unauthorized" {
                             usb.push(Found {
                                 name: "Android: разрешите отладку на телефоне".into(),
                                 detail: format!("adb {} (unauthorized)", d.serial),
-                                target: Target::Adb { serial: Some(d.serial), port: DEFAULT_PORT },
+                                target: Target::Adb {
+                                    serial: Some(d.serial),
+                                    port: DEFAULT_PORT,
+                                },
                             });
                         }
                     }

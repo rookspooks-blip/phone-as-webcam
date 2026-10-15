@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+      - name: Linux deps
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - name: Release build
+        run: cargo build --release -p lensbridge -p lb-sim
+      - name: Upload Windows binaries
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-x64
+          path: |
+            desktop/target/release/lensbridge.exe
+            desktop/target/release/lb-sim.exe
+
+  vcam-filter:
+    name: DirectShow filter (${{ matrix.arch }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            out: lensbridge_vcam.dll
+          - arch: Win32
+            out: lensbridge_vcam_x86.dll
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S drivers/windows/dshow-filter -B build -A ${{ matrix.arch }}
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Rename
+        shell: bash
+        run: mkdir -p out && cp build/Release/lensbridge_vcam.dll out/${{ matrix.out }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vcam-${{ matrix.arch }}
+          path: out/${{ matrix.out }}
+
+  package-windows:
+    name: Windows package
+    needs: [rust, vcam-filter]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Assemble zip
+        run: |
+          set -e
+          D=Lensbridge-windows-x64
+          mkdir -p $D/vcam
+          cp art/desktop-windows-x64/lensbridge.exe art/desktop-windows-x64/lb-sim.exe $D/
+          cp art/vcam-x64/lensbridge_vcam.dll art/vcam-Win32/lensbridge_vcam_x86.dll $D/vcam/
+          cp packaging/windows/*.cmd $D/
+          cp README.md $D/README.md
+          cp README.ru.md $D/README.ru.md 2>/dev/null || true
+          zip -r $D.zip $D
+          sha256sum $D.zip > $D.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lensbridge-windows-x64
+          path: Lensbridge-windows-x64.zip*
+
+  ios:
+    name: iOS app
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: mobile/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode version
+        run: xcodebuild -version
+      - name: Generate project
+        run: brew install xcodegen && xcodegen
+      - name: Unit tests (simulator)
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          xcodebuild test -project Lensbridge.xcodeproj -scheme Lensbridge -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO | tail -40
+          exit ${PIPESTATUS[0]}
+      - name: Build unsigned device app
+        run: |
+          xcodebuild build -project Lensbridge.xcodeproj -scheme Lensbridge -configuration Release -sdk iphoneos \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -40
+          exit ${PIPESTATUS[0]}
+      - name: Package .ipa (unsigned, for AltStore / SideStore / Sideloadly)
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Lensbridge.app Payload/
+          zip -qr Lensbridge-unsigned.ipa Payload
+          shasum -a 256 Lensbridge-unsigned.ipa > Lensbridge-unsigned.ipa.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lensbridge-ios-unsigned
+          path: mobile/ios/Lensbridge-unsigned.ipa*
