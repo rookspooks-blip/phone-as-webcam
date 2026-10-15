@@ -2,7 +2,7 @@
 
 **Телефон (iPhone или Android) как веб-камера и микрофон для компьютера.** Открытый код, только локальная сеть (Wi-Fi или USB), шифрование, без облака, телеметрии и магазинов приложений: всё ставится из GitHub Actions / Releases вручную.
 
-[English version](README.md) · [Архитектура](docs/ARCHITECTURE.md) · [Протокол](docs/PROTOCOL.md) · [Ручное тестирование](docs/TESTING.md)
+[**Пошаговая инструкция: iPhone + Windows 10 / Intel Mac**](docs/GUIDE.ru.md) · [English version](README.md) · [Архитектура](docs/ARCHITECTURE.md) · [Протокол](docs/PROTOCOL.md) · [Ручное тестирование](docs/TESTING.md)
 
 ![Десктоп-приложение, подключённое к симулятору телефона](docs/images/desktop-app.png)
 
