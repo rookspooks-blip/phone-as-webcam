@@ -37,6 +37,9 @@ pub struct ClientConfig {
     pub client_name: String,
     /// Called from the reader thread for every audio chunk (keep it fast).
     pub audio_sink: Option<AudioSink>,
+    /// Frame slot to publish into; a fresh one is created when `None`. Passing
+    /// a long-lived slot lets consumers (virtual camera) survive reconnects.
+    pub frames: Option<Arc<LatestFrame>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -152,7 +155,7 @@ impl Drop for ClientHandle {
 pub fn spawn(cfg: ClientConfig) -> ClientHandle {
     let (cmd_tx, cmd_rx) = unbounded();
     let (ev_tx, ev_rx) = unbounded();
-    let frames = LatestFrame::new();
+    let frames = cfg.frames.clone().unwrap_or_else(LatestFrame::new);
     let frames2 = frames.clone();
     let thread = thread::Builder::new()
         .name("lb-session".into())

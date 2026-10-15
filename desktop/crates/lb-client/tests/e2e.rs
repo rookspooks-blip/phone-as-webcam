@@ -53,6 +53,7 @@ fn streams_video_audio_and_applies_settings() {
         key,
         client_name: "test".into(),
         audio_sink: Some(Arc::new(move |c| *audio2.lock().unwrap() += c.samples.len())),
+        frames: None,
     });
 
     assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(e, Event::State(ConnState::Connected { .. }))));
@@ -94,6 +95,7 @@ fn wrong_key_reports_not_paired() {
         key: PairingKey::generate(),
         client_name: "test".into(),
         audio_sink: None,
+        frames: None,
     });
     assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(e, Event::State(ConnState::NotPaired))));
 }
@@ -108,6 +110,7 @@ fn reconnects_after_server_restart() {
         key: key.clone(),
         client_name: "test".into(),
         audio_sink: None,
+        frames: None,
     });
     assert!(wait_for(&client.events, Duration::from_secs(10), |e| matches!(e, Event::State(ConnState::Connected { .. }))));
     drop(sim); // stops accepting; existing session ends via stop flag
