@@ -701,13 +701,15 @@ impl LensbridgeApp {
     fn ui_status(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             let (text, color) = match &self.conn {
-                Some(ConnState::Connected { device, .. }) => (format!("● {device}"), Color32::from_rgb(90, 180, 90)),
-                Some(ConnState::Connecting { .. }) => ("● подключение…".into(), Color32::from_rgb(200, 170, 60)),
-                Some(ConnState::NotPaired) => ("● не сопряжено".into(), Color32::from_rgb(220, 120, 80)),
-                Some(ConnState::Busy) => ("● занят".into(), Color32::from_rgb(220, 120, 80)),
-                Some(ConnState::Disconnected { .. }) => ("● нет связи".into(), Color32::from_rgb(220, 120, 80)),
-                _ => ("● не подключено".into(), Color32::GRAY),
+                Some(ConnState::Connected { device, .. }) => (device.clone(), Color32::from_rgb(90, 180, 90)),
+                Some(ConnState::Connecting { .. }) => ("подключение…".into(), Color32::from_rgb(200, 170, 60)),
+                Some(ConnState::NotPaired) => ("не сопряжено".into(), Color32::from_rgb(220, 120, 80)),
+                Some(ConnState::Busy) => ("занят".into(), Color32::from_rgb(220, 120, 80)),
+                Some(ConnState::Disconnected { .. }) => ("нет связи".into(), Color32::from_rgb(220, 120, 80)),
+                _ => ("не подключено".into(), Color32::GRAY),
             };
+            let (dot, _) = ui.allocate_exact_size(Vec2::splat(12.0), Sense::hover());
+            ui.painter().circle_filled(dot.center(), 5.0, color);
             ui.label(RichText::new(text).color(color));
             if let Some(t) = &self.target {
                 ui.label(RichText::new(t.label()).weak());
@@ -720,8 +722,12 @@ impl LensbridgeApp {
             }
             if let Some(phone) = &s.phone {
                 if let Some(b) = phone["battery"].as_f64() {
-                    let ch = if phone["charging"].as_bool().unwrap_or(false) { "⚡" } else { "" };
-                    ui.label(format!("🔋{:.0}%{ch}", b * 100.0));
+                    let ch = if phone["charging"].as_bool().unwrap_or(false) {
+                        " (заряжается)"
+                    } else {
+                        ""
+                    };
+                    ui.label(format!("батарея {:.0}%{ch}", b * 100.0));
                 }
                 if let Some(t) = phone["thermal"].as_str().filter(|t| *t != "nominal") {
                     ui.label(RichText::new(format!("нагрев: {t}")).color(Color32::from_rgb(220, 140, 60)));

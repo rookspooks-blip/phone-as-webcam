@@ -274,11 +274,13 @@ fn handle(
                 sent_frames += 1;
             }
         }
-        if st.audio && now >= next_audio {
+        // Audio is a real-time stream: emit every chunk that is due (like a mic
+        // buffer would), even when video encoding stalled the loop.
+        let mut due = 0;
+        while st.audio && now >= next_audio && due < 50 {
+            let lag = now.duration_since(next_audio);
             next_audio += Duration::from_millis(20);
-            if now > next_audio + Duration::from_millis(200) {
-                next_audio = now;
-            }
+            due += 1;
             let mut pcm = Vec::with_capacity(960 * 2);
             for _ in 0..960 {
                 let s = (phase.sin() * 6000.0) as i16;
@@ -289,10 +291,13 @@ fn handle(
                 codec: CODEC_PCM_S16LE,
                 flags: 0,
                 seq: aseq,
-                pts_us: server_now_us(),
+                pts_us: server_now_us().saturating_sub(lag.as_micros() as u64),
             };
             aseq = aseq.wrapping_add(1);
             writer.write_packet(PacketType::Audio, &hdr.encode_with(&pcm))?;
+        }
+        if now > next_audio + Duration::from_secs(1) {
+            next_audio = now; // after a long stall do not try to replay seconds of audio
         }
         if now >= next_stats {
             next_stats += Duration::from_secs(1);

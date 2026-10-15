@@ -9,7 +9,7 @@ use std::net::TcpListener;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use lb_proto::{PairingKey, DEFAULT_PORT};
+use lb_proto::{PairingKey, DEFAULT_PORT, SERVICE_TYPE};
 use lb_sim::{serve, SimOptions};
 
 fn main() {
@@ -45,6 +45,23 @@ fn main() {
         k
     });
     let listener = TcpListener::bind(("0.0.0.0", port)).expect("bind");
+    // Advertise like a phone so the desktop app's device list finds the simulator.
+    let _mdns = advertise(&opts.device_name, port);
     log::info!("lb-sim listening on 0.0.0.0:{port}, key id {}", key.key_id_hex());
     serve(listener, key, opts, Arc::new(AtomicBool::new(false)));
+}
+
+fn advertise(name: &str, port: u16) -> Option<mdns_sd::ServiceDaemon> {
+    let daemon = mdns_sd::ServiceDaemon::new().ok()?;
+    let props = [("v", "1"), ("name", name), ("id", "lbsim")];
+    let info = mdns_sd::ServiceInfo::new(SERVICE_TYPE, name, "lb-sim.local.", "", port, &props[..])
+        .ok()?
+        .enable_addr_auto();
+    match daemon.register(info) {
+        Ok(()) => Some(daemon),
+        Err(e) => {
+            log::warn!("mDNS advertise failed: {e}");
+            None
+        }
+    }
 }

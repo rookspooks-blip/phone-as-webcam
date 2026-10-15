@@ -101,7 +101,11 @@ fn streams_video_audio_and_applies_settings() {
         Duration::from_secs(5),
         |e| matches!(e, Event::Stats(s) if s.fps > 5.0 && s.latency_ms.is_some_and(|l| (0.0..1000.0).contains(&l)))
     ));
-    assert!(*audio.lock().unwrap() >= 48_000 / 2, "expected at least 0.5 s of audio");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while *audio.lock().unwrap() < 48_000 / 2 && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(50));
+    }
+    assert!(*audio.lock().unwrap() >= 48_000 / 2, "expected at least 0.5 s of audio within 5 s");
     client.stop();
 }
 
