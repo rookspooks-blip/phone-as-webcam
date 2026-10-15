@@ -1,0 +1,10 @@
+target/
+*.xcodeproj/
+!mobile/ios/*.xcodeproj/
+DerivedData/
+build/
+.gradle/
+local.properties
+*.iml
+.idea/
+.DS_Store

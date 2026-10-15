@@ -1,0 +1,22 @@
+[package]
+name = "lb-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cpal = { version = "0.18.2", optional = true }
+crossbeam-channel = "0.5.17"
+lb-proto = { version = "0.1.0", path = "../lb-proto" }
+log = "0.4.34"
+openh264 = "0.9.8"
+plist = "1.10.1"
+serde_json = "1.0.154"
+
+[features]
+default = []
+audio = ["dep:cpal"]
+
+[dev-dependencies]
+crossbeam-channel = "0.5.17"
+lb-sim = { path = "../../tools/lb-sim" }
