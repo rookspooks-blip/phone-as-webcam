@@ -339,8 +339,8 @@ impl LensbridgeApp {
             self.preview_gen = gen;
             self.preview_recv_us = f.recv_us;
             self.preview_size = (f.width, f.height);
-            let rgba = f.to_rgba(self.mirror.load(Ordering::Relaxed));
-            let img = ColorImage::from_rgba_unmultiplied([f.width, f.height], &rgba);
+            let (w, h, rgba) = f.to_rgba_scaled(1280, self.mirror.load(Ordering::Relaxed));
+            let img = ColorImage::from_rgba_unmultiplied([w, h], &rgba);
             match &mut self.preview {
                 Some(t) => t.set(img, TextureOptions::LINEAR),
                 None => self.preview = Some(ctx.load_texture("preview", img, TextureOptions::LINEAR)),

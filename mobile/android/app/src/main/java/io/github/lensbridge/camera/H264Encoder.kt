@@ -48,6 +48,7 @@ class H264Encoder(private val onFrame: (data: ByteArray, key: Boolean, ptsUs: Lo
             c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         } catch (e: Exception) {
             // Some encoders reject level/low-latency keys: retry with the essentials.
+            c.reset()
             format.removeKey(MediaFormat.KEY_LEVEL)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) format.removeKey(MediaFormat.KEY_LOW_LATENCY)
             c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)

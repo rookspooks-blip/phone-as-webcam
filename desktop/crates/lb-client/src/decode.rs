@@ -30,15 +30,25 @@ impl VideoFrame {
 
     /// RGBA8 for the preview. BT.709 limited range (what phone encoders emit for HD).
     pub fn to_rgba(&self, mirror: bool) -> Vec<u8> {
-        let (w, h) = (self.width, self.height);
+        self.to_rgba_scaled(usize::MAX, mirror).2
+    }
+
+    /// RGBA8 downscaled (nearest neighbour) so the width is at most `max_width`;
+    /// returns `(width, height, pixels)`. Keeps preview conversion cheap at 1080p60.
+    pub fn to_rgba_scaled(&self, max_width: usize, mirror: bool) -> (usize, usize, Vec<u8>) {
+        let (sw, sh) = (self.width, self.height);
+        let step = sw.div_ceil(max_width.max(1)).max(1);
+        let (w, h) = (sw / step, sh / step);
         let (y_p, u_p, v_p) = self.planes();
         let cw = self.chroma_size().0;
         let mut out = vec![0u8; w * h * 4];
         for row in 0..h {
-            let crow = row / 2;
+            let sy = row * step;
+            let crow = sy / 2;
             for col in 0..w {
-                let src_col = if mirror { w - 1 - col } else { col };
-                let y = y_p[row * w + src_col] as i32;
+                let sx = col * step;
+                let src_col = if mirror { sw - 1 - sx } else { sx };
+                let y = y_p[sy * sw + src_col] as i32;
                 let u = u_p[crow * cw + src_col / 2] as i32;
                 let v = v_p[crow * cw + src_col / 2] as i32;
                 let (r, g, b) = yuv_to_rgb(y, u, v);
@@ -49,7 +59,7 @@ impl VideoFrame {
                 out[o + 3] = 255;
             }
         }
-        out
+        (w, h, out)
     }
 }
 
@@ -124,5 +134,22 @@ mod tests {
         let mirrored = f.to_rgba(true);
         assert_eq!(normal[0], 0);
         assert_eq!(mirrored[0], 255);
+    }
+
+    #[test]
+    fn scaled_preview_halves_1080p() {
+        let f = VideoFrame {
+            width: 1920,
+            height: 1080,
+            i420: vec![128; 1920 * 1080 * 3 / 2],
+            pts_us: 0,
+            seq: 0,
+            recv_us: 0,
+        };
+        let (w, h, px) = f.to_rgba_scaled(960, false);
+        assert_eq!((w, h), (960, 540));
+        assert_eq!(px.len(), 960 * 540 * 4);
+        let (w2, _, _) = f.to_rgba_scaled(1280, false);
+        assert_eq!(w2, 960); // integer step 2
     }
 }

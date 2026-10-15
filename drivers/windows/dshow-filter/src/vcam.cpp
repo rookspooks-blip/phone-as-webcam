@@ -1,5 +1,6 @@
 #include "vcam.h"
 
+#include <mmsystem.h>
 #include <new>
 
 namespace {
@@ -122,6 +123,14 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType* pmt) {
     CheckPointer(pmt, E_POINTER);
     CAutoLock lock(m_pFilter->pStateLock());
     if (iPosition < 0) return E_INVALIDARG;
+    // Offer the format chosen through IAMStreamConfig first, so connection honours it.
+    if (format_set_) {
+        if (iPosition == 0) {
+            *pmt = m_mt;
+            return S_OK;
+        }
+        return BuildMediaType(iPosition - 1, pmt, kDefaultFrameTime);
+    }
     return BuildMediaType(iPosition, pmt, kDefaultFrameTime);
 }
 
@@ -163,6 +172,12 @@ HRESULT CVCamStream::OnThreadCreate() {
     next_tick_ = 0;
     frame_time_ = 0;
     first_sample_ = true;
+    timeBeginPeriod(1);  // 1 ms Sleep granularity for even frame pacing while streaming
+    return S_OK;
+}
+
+HRESULT CVCamStream::OnThreadDestroy() {
+    timeEndPeriod(1);
     return S_OK;
 }
 
@@ -234,6 +249,10 @@ STDMETHODIMP CVCamStream::SetFormat(AM_MEDIA_TYPE* pmt) {
     }
     hr = SetMediaType(&mt);
     if (FAILED(hr)) return hr;
+    {
+        CAutoLock lock(m_pFilter->pStateLock());
+        format_set_ = true;
+    }
     IPin* peer = nullptr;
     if (SUCCEEDED(ConnectedTo(&peer)) && peer) {
         peer->Release();

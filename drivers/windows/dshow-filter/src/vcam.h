@@ -62,6 +62,7 @@ protected:
     HRESULT GetMediaType(int iPosition, CMediaType* pmt) override;
     HRESULT SetMediaType(const CMediaType* pmt) override;
     HRESULT OnThreadCreate() override;
+    HRESULT OnThreadDestroy() override;
 
 private:
     CVCam* parent_;
@@ -70,4 +71,5 @@ private:
     LONGLONG next_tick_ = 0;       // QPC-based pacing, 100 ns units
     REFERENCE_TIME frame_time_ = 0;  // fallback timestamps without a clock
     bool first_sample_ = true;
+    bool format_set_ = false;      // the app chose a format via IAMStreamConfig::SetFormat
 };
