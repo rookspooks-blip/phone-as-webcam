@@ -6,10 +6,15 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Create a GitHub Release with this tag (e.g. v0.1.0); empty = just build"
+        required: false
+        default: ""
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -233,7 +238,7 @@ jobs:
 
   release:
     name: GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: [package-windows, desktop-macos, desktop-linux, android, ios]
     runs-on: ubuntu-latest
     permissions:
@@ -249,6 +254,12 @@ jobs:
           cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: Lensbridge ${{ inputs.release_tag || github.ref_name }}
           files: out/*
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref, '-') }}
+          prerelease: true
+          body: |
+            Первая сборка. Собрана и протестирована в CI, но **ещё не проверена на реальных телефонах** — см. docs/TESTING.md.
+            Инструкция: docs/GUIDE.ru.md. Контрольные суммы: SHA256SUMS.
