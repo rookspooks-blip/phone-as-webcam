@@ -12,6 +12,10 @@
 
 ## Часть 0. Скачать файлы
 
+**Проще всего — из релиза (вход в GitHub не нужен):** https://github.com/rookspooks-blip/phone-as-webcam/releases/latest — там `Lensbridge-windows-x64.zip`, `Lensbridge-unsigned.ipa`, `Lensbridge-macos-universal.dmg`, `Lensbridge-android.apk`, `Lensbridge-linux-x64.tar.gz` и `SHA256SUMS`.
+
+Самые свежие сборки после каждого изменения — в Actions:
+
 1. Откройте https://github.com/rookspooks-blip/phone-as-webcam и войдите в свой аккаунт GitHub (без входа скачать артефакты нельзя).
 2. Вкладка **Actions** → слева **CI** → верхний запуск с **зелёной галочкой**.
 3. Внизу страницы, в блоке **Artifacts**, скачайте:
