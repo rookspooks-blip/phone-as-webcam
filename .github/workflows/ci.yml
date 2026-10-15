@@ -50,6 +50,64 @@ jobs:
             desktop/target/release/lensbridge.exe
             desktop/target/release/lb-sim.exe
 
+  desktop-macos:
+    name: macOS desktop (universal)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+      - name: Build both architectures
+        working-directory: desktop
+        run: |
+          cargo build --release -p lensbridge --target aarch64-apple-darwin
+          cargo build --release -p lensbridge --target x86_64-apple-darwin
+      - name: Universal .app in a .dmg
+        run: |
+          set -e
+          APP=dist/Lensbridge.app
+          mkdir -p $APP/Contents/MacOS
+          lipo -create -output $APP/Contents/MacOS/lensbridge \
+            desktop/target/aarch64-apple-darwin/release/lensbridge desktop/target/x86_64-apple-darwin/release/lensbridge
+          cp packaging/macos/Info.plist $APP/Contents/Info.plist
+          codesign --force --deep -s - $APP   # ad-hoc signature (no Developer ID)
+          lipo -info $APP/Contents/MacOS/lensbridge
+          hdiutil create -volname Lensbridge -srcfolder dist -ov -format UDZO Lensbridge-macos-universal.dmg
+          shasum -a 256 Lensbridge-macos-universal.dmg > Lensbridge-macos-universal.dmg.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lensbridge-macos-universal
+          path: Lensbridge-macos-universal.dmg*
+
+  desktop-linux:
+    name: Linux desktop (x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - name: Build
+        working-directory: desktop
+        run: cargo build --release -p lensbridge -p lb-sim
+      - name: Package
+        run: |
+          D=Lensbridge-linux-x64
+          mkdir -p $D
+          cp desktop/target/release/lensbridge desktop/target/release/lb-sim README.md $D/
+          tar czf $D.tar.gz $D
+          sha256sum $D.tar.gz > $D.tar.gz.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lensbridge-linux-x64
+          path: Lensbridge-linux-x64.tar.gz*
+
   vcam-filter:
     name: DirectShow filter (${{ matrix.arch }})
     runs-on: windows-latest
@@ -172,3 +230,25 @@ jobs:
         with:
           name: Lensbridge-ios-unsigned
           path: mobile/ios/Lensbridge-unsigned.ipa*
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [package-windows, desktop-macos, desktop-linux, android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Collect files and checksums
+        run: |
+          mkdir -p out
+          find art -type f \( -name 'Lensbridge-*' ! -name '*.sha256' \) -exec cp {} out/ \;
+          cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, '-') }}
